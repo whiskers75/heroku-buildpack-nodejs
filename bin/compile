@@ -57,7 +57,27 @@ cd $build_dir
 # Configure cache directory
 package_checksum=$(cat $build_dir/package.json | md5sum | awk '{print $1}')
 cache_dir="$cache_basedir/$package_checksum"
+function bloom_vendor() {
+  binary="$1"
+  path="$2"
+  include="$3"
 
+  echo "       Fetching $binary"
+  mkdir -p $path
+  package="https://s3.amazonaws.com/bloom-vulcan/$binary"
+  curl $package -s -o - | tar xz -C $path -f -
+
+  echo "       Exporting $binary build and include paths"
+
+  export CPPPATH="$path/$include:$CPPPATH"
+  export CPATH="$path/$include:$CPATH"
+  export LIBRARY_PATH="$path/lib:$LIBRARY_PATH"
+  export PKG_CONFIG_PATH="$path/lib/pkgconfig:$PKG_CONFIG_PATH"
+}
+
+echo "-----> Vendoring Cairo"
+bloom_vendor "cairo-1.10.2.tgz" "$1/vendor/cairo-1.10.2" "include/cairo"
+bloom_vendor "pixman-0.20.2.tgz" "$1/vendor/pixman-0.20.2" "include/pixman-1"
 # Restore from cache if package.json hasn't changed
 if test -d $cache_dir; then
   status "package.json unchanged since last build"
